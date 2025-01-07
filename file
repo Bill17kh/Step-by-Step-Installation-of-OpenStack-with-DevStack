@@ -1,0 +1,60 @@
+# Update your system and install necessary packages
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y net-tools git ntp open-vm-tools open-vm-tools-desktop iptables arptables ebtables python3-pip
+
+# Set iptables alternatives (if necessary)
+sudo update-alternatives --set iptables /usr/sbin/iptables-legacy || true
+sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy || true
+sudo update-alternatives --set arptables /usr/sbin/arptables-legacy || true
+sudo update-alternatives --set ebtables /usr/sbin/ebtables-legacy || true
+
+# Upgrade pip safely
+# First, ensure pip is installed correctly
+python3 -m pip install --upgrade pip
+
+# If the above command fails, try this alternative method:
+curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+python3 get-pip.py
+
+# Clean up any existing PyYAML installations that may cause conflicts
+sudo rm -rf /usr/lib/python3/dist-packages/yaml
+sudo rm -rf /usr/lib/python3/dist-packages/PyYAML-*
+sudo rm -rf /usr/lib/python3/dist-packages/simplejson*
+
+# Create a new user for OpenStack DevStack
+sudo useradd -s /bin/bash -d /opt/stack -m stack
+echo "stack ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/stack
+
+# Switch to the stack user
+sudo -u stack -i
+
+# Clone the DevStack repository
+git clone https://opendev.org/openstack/devstack
+
+# Exit back to the root user
+exit
+
+# Change ownership of the DevStack directory to the stack user
+sudo chown -R stack:stack /opt/stack/devstack
+
+# Create stack user environment setup script
+sudo /opt/stack/devstack/tools/create-stack-user.sh
+
+# Switch to the stack user again
+sudo -u stack -i
+
+# Navigate to the DevStack directory and copy sample configuration
+cd devstack
+sudo cp samples/local.conf local.conf
+
+# Edit local.conf to customize your installation (use nano or your preferred editor)
+nano local.conf  # Customize as needed, e.g., set passwords, enable services, etc.
+
+# Create logs directory and set permissions
+sudo mkdir /opt/stack/logs/
+sudo touch /opt/stack/logs/error.log
+sudo chown stack:stack /opt/stack/logs/error.log
+sudo chown -R stack:stack /opt/stack
+
+# Run the DevStack installation script with force option
+FORCE=yes ./stack.sh
