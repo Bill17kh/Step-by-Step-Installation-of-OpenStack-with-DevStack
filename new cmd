@@ -1,0 +1,83 @@
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y net-tools git ntp open-vm-tools open-vm-tools-desktop \
+    iptables arptables ebtables python3-pip python3-dev libffi-dev \
+    gcc libssl-dev python3-venv python3-setuptools
+|------------------------------------------------------------
+|📌 Pourquoi ces paquets ?
+|
+|  net-tools : Commandes réseau
+|
+|  git : Pour cloner DevStack
+|
+|  ntp : Synchronisation de l’heure
+|
+|  python3-venv : Environnement virtuel Python
+|
+|  libssl-dev, libffi-dev : Bibliothèques de sécurité
+----------------------------------------------------------
+
+sudo update-alternatives --set iptables /usr/sbin/iptables-legacy
+sudo update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy
+sudo update-alternatives --set arptables /usr/sbin/arptables-legacy
+sudo update-alternatives --set ebtables /usr/sbin/ebtables-legacy
+
+python3 -m pip install --upgrade pip
+
+!!!! Si cette commande échoue :
+                                curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+                                python3 get-pip.py
+
+
+sudo rm -rf /usr/lib/python3/dist-packages/yaml
+sudo rm -rf /usr/lib/python3/dist-packages/PyYAML-*
+sudo rm -rf /usr/lib/python3/dist-packages/simplejson*
+----------------------------------------------------------------------------------
+|  Nettoyage des anciennes versions de PyYAML et SimpleJSON (évite les conflits)
+|
+|
+|--------------------------------------------------------------------------------
+
+
+
+sudo useradd -s /bin/bash -d /opt/stack -m stack
+echo "stack ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/stack
+sudo su - stack
+git clone https://opendev.org/openstack/devstack
+cd devstack
+
+
+cat << EOF > local.conf
+[[local|localrc]]
+# Identifiants d'admin
+ADMIN_PASSWORD=admin
+DATABASE_PASSWORD=admin
+RABBIT_PASSWORD=admin
+SERVICE_PASSWORD=admin
+
+# Réseau
+HOST_IP=$(hostname -I | awk '{print $1}')
+
+# Modules de base à installer
+enable_service key mysql rabbit
+enable_service n-api n-cpu n-cond n-sch n-crt n-obj
+enable_service cinder c-sch c-api c-vol
+enable_service glance g-api g-reg
+enable_service placement-api
+enable_service horizon
+
+# Désactiver Neutron et activer Nova Network
+disable_service q-svc q-agt q-dhcp q-l3 q-meta
+enable_service n-net
+EOF
+
+-------------------------------------------------------------------------------
+|  Explication :
+|Définit les mots de passe par défaut.
+|Configure l’IP du serveur.
+|Active les services de base (Nova, Cinder, Glance, Horizon).
+|----------------------------------------------------------------------
+
+
+
+./stack.sh
+
